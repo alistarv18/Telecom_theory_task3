@@ -1,0 +1,109 @@
+clc, clear variables
+
+% input initial data for simulation
+N = 1e4;                %number of QAM-16 symbols
+h_avg = [1 0.25 0.25]   %avg values of channel impulse response
+h_dev = h_avg/4;        %deviation level of the channel impulse repsonse
+K = 5;                  %rician channel ratio direct/reflected
+Ndwn  = 5;              % Downsampling plots
+
+%-------------------------------------------------------------------------------------
+%Task 1. QAM 16 signal
+%---------------------------------------------------------------------------------------
+dtRe = 2*randi(4,1,N)-5;    %PAM-4 signal(real part)
+dtIm = 2*randi(4,1,N)-5;    %PAM-4 signal(imag part)
+
+% QAM 16 direct line of sight signal
+sLos = dtRe + 1i*dtIm;
+
+% Find an ideal QAM 16 constellation
+QAM16map = unique(sLos);
+
+%-------------------------------------------------------------------------------------
+%Task 2. Rayleigh fading channel model
+%Simulate channel impulse response for each symbols
+%---------------------------------------------------------------------------------------
+% T = 0 IR component simulation
+h0Re=randn(1,N)*h_dev(1)+h_avg(1);
+h0Im=randn(1,N)*h_dev(1)+h_avg(1);
+
+% T = 1 IR component simulation
+h1Re=randn(1,N)*h_dev(2)+h_avg(2);
+h1Im=randn(1,N)*h_dev(2)+h_avg(2);
+
+% T = 2 IR component simulation
+h2Re=randn(1,N)*h_dev(3)+h_avg(3);
+h2Im=randn(1,N)*h_dev(3)+h_avg(3);
+
+%for i=1:N
+%  stem([0 1 2],[h0Re(i) h1Re(i) h2Re(i)],'r','linewidth',2);grid on
+%  ylim([-1 1.5]);
+%  pause(0.1);
+% end
+
+%Simulate path signals
+s0 = h0Re .* dtRe + 1i*h0Im .* dtIm;
+s1 = h1Re .* [0 dtRe(1:end-1)] + 1i*h1Im.*[0 dtIm(1:end-1)];
+s2 = h2Re .* [0 0 dtRe(1:end-2)] + 1i*h2Im.*[0 0 dtIm(1:end-2)];
+
+% Add together the received signal
+sRx = s0 + s1+ s2;
+
+% Display plot of received QAM-16 signal in Rayleigh channel
+figure(1), subplot(1,2,1)
+idx  = 1:Ndwn:N;              % Limit of the display points
+plot(real(sRx(idx)), imag(sRx(idx)),'b.', real(QAM16map), imag(QAM16map),'rx','linewidth',2);
+axis square; xlabel('Real part');ylabel('Imag part'); grid on;
+title('Rayleigh channel simulation');
+xlim([-8 8]); ylim([-8 8]);
+
+%--------------------------------------------------------------------------------------------
+% Task 3.
+%-------------------------------------------------------------------------------------------------
+%Transmit data in Rician channel
+%Add together to get the received signal
+sRx = sqrt(K/(K+1))*s0+sqrt(1/(K+1))*(s1+s2);
+sRx = sLos;
+% Display plot of received QAM-16 signal in Rician channel
+figure(1),subplot(1,2,2)
+idx  = 1:Ndwn:N;              % Limit of the display points
+plot(real(sRx(idx)), imag(sRx(idx)),'b.', real(QAM16map), imag(QAM16map),'rx','linewidth',2);
+axis square; xlabel('Real part');ylabel('Imag part'); grid on;
+titleStr = sprintf('Rician channel simulation, K = %d', K);
+title(titleStr);
+xlim([-8 8]); ylim([-8 8]);
+%--------------------------------------------------------------------------------------------
+% Task 4.
+%-------------------------------------------------------------------------------------------------
+% Rayleigh channel impulse response
+hRayRe = [h0Re(end) h1Re(end) h2Re(end)];
+hRayIm = [h0Im(end) h1Im(end) h2Im(end)];
+
+% Ratleigh channel frequency response
+HRayRe = freqz(hRayRe);
+HRayIm = freqz(hRayIm);
+
+figure(2)
+subplot(2,2,1), stem(0:2,hRayRe,'r'),grid on; ylabel('IR real part')
+subplot(2,2,3), plot(abs(HRayRe),'b'), grid on; ylabel('AFR real part')
+subplot(2,2,2), stem(0:2,hRayIm,'r'),grid on; ylabel('IR imag part')
+subplot(2,2,4), plot(abs(HRayIm),'b'), grid on; ylabel('AFR imag part')
+titleStr = sprintf('Rician channel simulation, K = %d', K);
+axes('title',titleStr,'visible','off');
+
+%-------------------------------------------------------------------------------
+% Rician channel impulse response
+hRicRe = [sqrt(K/(K+1))*h0Re(end) sqrt(1/(K+1))*h1Re(end) sqrt(1/(K+1))*h2Re(end)];
+hRicIm = [sqrt(K/(K+1))*h0Im(end) sqrt(1/(K+1))*h1Im(end) sqrt(1/(K+1))*h2Im(end)];
+
+
+% Rician channel frequency response
+HRicRe = freqz(hRicRe);
+HRicIm = freqz(hRicIm);
+
+figure(3)
+subplot(2,2,1), stem(0:2,hRicRe,'r'),grid on; ylabel('IR real part')
+subplot(2,2,3), plot(abs(HRicRe),'b'), grid on; ylabel('AFR real part')
+subplot(2,2,2), stem(0:2,hRicIm,'r'),grid on; ylabel('IR imag part')
+subplot(2,2,4), plot(abs(HRicIm),'b'), grid on; ylabel('AFR imag part')
+axes('title','IR and AFR for Rician channel model','visible','off');
